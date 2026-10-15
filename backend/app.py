@@ -1,23 +1,30 @@
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+import os
 
 app = Flask(__name__)
 CORS(app)
 
+# Frontend directory
+FRONTEND_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "frontend")
+)
 
-# Home route
-@app.route("/", methods=["GET"])
+
+# Open the frontend homepage
+@app.route("/")
 def home():
-    return jsonify({
-        "success": True,
-        "project": "AI College Assistant",
-        "message": "Welcome to the AI College Assistant API!",
-        "version": "1.0.0"
-    })
+    return send_from_directory(FRONTEND_DIR, "index.html")
 
 
-# Health check
+# Serve frontend CSS, JavaScript, and other static files
+@app.route("/<path:filename>")
+def frontend_files(filename):
+    return send_from_directory(FRONTEND_DIR, filename)
+
+
+# Health check API
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({
@@ -27,7 +34,7 @@ def health():
     })
 
 
-# College information
+# College information API
 @app.route("/api/college", methods=["GET"])
 def college_info():
     return jsonify({
@@ -46,7 +53,7 @@ def college_info():
     })
 
 
-# Basic chat response
+# Chat API
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
@@ -63,54 +70,37 @@ def chat():
     if any(word in question for word in ["hello", "hi", "hey"]):
         answer = (
             "Hello! Welcome to AI College Assistant. "
-            "How can I help you with your college-related questions?"
+            "How can I help you today?"
         )
-
     elif any(word in question for word in ["admission", "enroll", "enrollment"]):
         answer = (
-            "For admission information, please contact your college's "
-            "administration office. Ask them about eligibility, required "
-            "documents, application deadlines, and entrance examinations."
+            "For admission information, contact your college administration "
+            "to learn about eligibility, documents, and application deadlines."
         )
-
     elif any(word in question for word in ["fee", "fees", "payment", "tuition"]):
         answer = (
-            "College fees depend on the course and institution. "
-            "Please check with your college administration for the latest "
-            "fee structure, payment deadlines, and available scholarships."
+            "Please contact your college administration for the current "
+            "fee structure and payment deadlines."
         )
-
-    elif any(word in question for word in ["exam", "examination", "routine", "schedule"]):
+    elif any(word in question for word in ["exam", "examination", "routine"]):
         answer = (
-            "For examination routines, check your college notice board "
-            "or official website. You can also contact your department "
-            "for examination dates and instructions."
+            "Check your college's official website or notice board for "
+            "examination routines and announcements."
         )
-
     elif any(word in question for word in ["course", "subject", "program", "syllabus"]):
         answer = (
-            "I can help with course-related questions. Please specify your "
-            "program, semester, or subject so I can guide you more accurately."
+            "Please tell me your course, semester, or subject so I can "
+            "provide more relevant guidance."
         )
-
-    elif any(word in question for word in ["scholarship", "financial aid"]):
+    elif "scholarship" in question:
         answer = (
-            "Scholarship eligibility and application procedures vary by "
-            "college. Contact the administration office to learn about "
-            "merit-based scholarships, financial assistance, and deadlines."
+            "Contact your college administration to learn about scholarship "
+            "eligibility, available programs, and application deadlines."
         )
-
-    elif any(word in question for word in ["contact", "office", "location", "address"]):
-        answer = (
-            "Please provide your college name so you can get more specific "
-            "contact and location information."
-        )
-
     else:
         answer = (
-            "I'm your AI College Assistant. I can help with admission, fees, "
-            "courses, examinations, scholarships, and student support. "
-            "Please ask a specific college-related question."
+            "I can help with admissions, fees, courses, examinations, "
+            "scholarships, and student support. Please ask a specific question."
         )
 
     return jsonify({
