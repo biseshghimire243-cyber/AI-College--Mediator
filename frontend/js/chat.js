@@ -1,6 +1,5 @@
 
-@'
-const API_BASE_URL = "http://127.0.0.1:5000";
+const API_BASE_URL = "";
 
 const chatForm = document.getElementById("chatForm");
 const messageInput = document.getElementById("messageInput");
@@ -21,6 +20,8 @@ let isSending = false;
 let toastTimeout;
 
 function showToast(message) {
+    if (!toast) return;
+
     toast.textContent = message;
     toast.classList.add("show");
 
@@ -32,19 +33,25 @@ function showToast(message) {
 
 async function checkBackend() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/health`);
+        const response = await fetch("/api/health");
+
         if (!response.ok) {
-            throw new Error("Backend health check failed");
+            throw new Error("Health check failed");
         }
 
         const data = await response.json();
 
-        statusDot.className = "status-dot online";
-        connectionStatus.textContent =
-            data.status === "healthy" ? "Backend connected" : "Backend online";
-    } catch (error) {
-        statusDot.className = "status-dot offline";
-        connectionStatus.textContent = "Backend offline";
+        if (statusDot) statusDot.className = "status-dot online";
+
+        if (connectionStatus) {
+            connectionStatus.textContent =
+                data.status === "healthy"
+                    ? "Backend connected"
+                    : "Backend online";
+        }
+    } catch {
+        if (statusDot) statusDot.className = "status-dot offline";
+        if (connectionStatus) connectionStatus.textContent = "Backend offline";
     }
 }
 
@@ -106,7 +113,11 @@ function scrollToLatest() {
 }
 
 function updateComposer() {
-    charCount.textContent = `${messageInput.value.length} / 2000`;
+    if (!messageInput) return;
+
+    if (charCount) {
+        charCount.textContent = `${messageInput.value.length} / 2000`;
+    }
 
     messageInput.style.height = "auto";
     messageInput.style.height =
@@ -116,7 +127,16 @@ function updateComposer() {
 async function sendMessage(question) {
     const cleanQuestion = question.trim();
 
-    if (!cleanQuestion || isSending) {
+    if (!cleanQuestion || isSending) return;
+
+    if (
+        !chatForm ||
+        !messageInput ||
+        !messagesContainer ||
+        !welcomeScreen ||
+        !sendBtn
+    ) {
+        console.error("Chat HTML elements are missing. Check index.html IDs.");
         return;
     }
 
@@ -133,47 +153,36 @@ async function sendMessage(question) {
     updateComposer();
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/chat`, {
+        const response = await fetch("/api/chat", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                message: cleanQuestion
-            })
+            body: JSON.stringify({ message: cleanQuestion })
         });
 
-        const data = await response.json().catch(() => ({}));
+        const data = await response.json();
 
         if (!response.ok) {
             throw new Error(
-                data.error || data.message ||
-                `The server returned status ${response.status}.`
+                data.answer || data.error || data.message ||
+                `Server error: ${response.status}`
             );
         }
 
         const answer = data.answer || data.response || data.message;
 
         if (typeof answer !== "string" || !answer.trim()) {
-            throw new Error(
-                "The chat API did not return an answer. Please check its response."
-            );
+            throw new Error("The server did not return a valid answer.");
         }
 
         typingRow.querySelector(".message-bubble").textContent = answer;
         typingRow.querySelector(".message-meta").textContent = getTime();
     } catch (error) {
-        const bubble = typingRow.querySelector(".message-bubble");
+        typingRow.querySelector(".message-bubble").textContent =
+            "Unable to get a response. Check that Flask is running and /api/chat is available.";
 
-        if (error instanceof TypeError) {
-            bubble.textContent =
-                "I couldn't connect to the chat API. Make sure Flask is running and the /api/chat endpoint has been created.";
-        } else {
-            bubble.textContent = error.message;
-        }
-
-        typingRow.querySelector(".message-meta").textContent =
-            "Connection information";
+        console.error("Chat error:", error);
     } finally {
         isSending = false;
         sendBtn.disabled = false;
@@ -182,59 +191,80 @@ async function sendMessage(question) {
     }
 }
 
-chatForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    sendMessage(messageInput.value);
-});
-
-messageInput.addEventListener("input", updateComposer);
-
-messageInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && !event.shiftKey) {
+if (chatForm) {
+    chatForm.addEventListener("submit", (event) => {
         event.preventDefault();
-        chatForm.requestSubmit();
-    }
-});
+        sendMessage(messageInput.value);
+    });
+}
+
+if (messageInput) {
+    messageInput.addEventListener("input", updateComposer);
+
+    messageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            chatForm?.requestSubmit();
+        }
+    });
+}
 
 document.querySelectorAll("[data-question]").forEach((button) => {
     button.addEventListener("click", () => {
         sendMessage(button.dataset.question);
-        sidebar.classList.remove("open");
+
+        if (sidebar) sidebar.classList.remove("open");
     });
 });
 
-newChatBtn.addEventListener("click", () => {
-    if (isSending) {
-        showToast("Please wait for the current response.");
-        return;
-    }
+if (newChatBtn) {
+    newChatBtn.addEventListener("click", () => {
+        if (isSending) {
+            showToast("Please wait for the current response.");
+            return;
+        }
 
-    messagesContainer.replaceChildren();
-    welcomeScreen.hidden = false;
-    messageInput.value = "";
-    updateComposer();
-    sidebar.classList.remove("open");
-    messageInput.focus();
-});
+        messagesContainer.replaceChildren();
+        welcomeScreen.hidden = false;
+        messageInput.value = "";
+        updateComposer();
 
-homeBtn.addEventListener("click", () => {
-    messagesContainer.replaceChildren();
-    welcomeScreen.hidden = false;
-    sidebar.classList.remove("open");
-});
+        if (sidebar) sidebar.classList.remove("open");
 
-historyBtn.addEventListener("click", () => {
-    showToast("Chat history will be available after database integration.");
-    sidebar.classList.remove("open");
-});
+        messageInput.focus();
+    });
+}
 
-menuBtn.addEventListener("click", () => {
-    sidebar.classList.toggle("open");
-});
+if (homeBtn) {
+    homeBtn.addEventListener("click", () => {
+        if (isSending) return;
+
+        messagesContainer.replaceChildren();
+        welcomeScreen.hidden = false;
+
+        if (sidebar) sidebar.classList.remove("open");
+    });
+}
+
+if (historyBtn) {
+    historyBtn.addEventListener("click", () => {
+        showToast("Chat history will be available after database integration.");
+
+        if (sidebar) sidebar.classList.remove("open");
+    });
+}
+
+if (menuBtn && sidebar) {
+    menuBtn.addEventListener("click", () => {
+        sidebar.classList.toggle("open");
+    });
+}
 
 document.addEventListener("click", (event) => {
     if (
         window.innerWidth <= 650 &&
+        sidebar &&
+        menuBtn &&
         sidebar.classList.contains("open") &&
         !sidebar.contains(event.target) &&
         !menuBtn.contains(event.target)
@@ -243,6 +273,6 @@ document.addEventListener("click", (event) => {
     }
 });
 
+updateComposer();
 checkBackend();
 setInterval(checkBackend, 30000);
-'@ | Set-Content -Encoding utf8 "frontend\js\chat.js"
