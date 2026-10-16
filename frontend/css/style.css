@@ -1404,3 +1404,224 @@ a:focus-visible {
     }
 }
 
+
+
+/* ==========================================
+   CAMPUSAI — STEP 2: SIDEBAR & NAVIGATION
+   Append to the bottom of style.css
+========================================== */
+
+.sidebar {
+    background: #ffffff;
+    border-right: 1px solid #e5eaf2;
+    padding: 22px 16px 16px;
+    gap: 0;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 2px 8px;
+    margin-bottom: 30px;
+}
+
+.brand-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.18);
+}
+
+.brand-accent {
+    color: #2563eb;
+}
+
+.new-chat-btn {
+    min-height: 44px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    margin-bottom: 28px;
+    border-radius: 11px;
+    background: #2563eb;
+    color: #ffffff;
+    border: 1px solid #2563eb;
+    font-weight: 600;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.new-chat-btn:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+.sidebar-label {
+    padding: 0 10px;
+    margin: 0 0 10px;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+
+.nav-item {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 0 12px;
+    margin-bottom: 5px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.nav-item:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.nav-item.active,
+.nav-item[aria-current="page"] {
+    background: #eff6ff;
+    border-color: #dbeafe;
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.sidebar-divider {
+    height: 1px;
+    margin: 20px 4px;
+    background: #edf0f5;
+    border: 0;
+}
+
+.sidebar-bottom {
+    margin-top: auto;
+    padding-top: 14px;
+}
+
+.help-card {
+    padding: 15px;
+    margin-bottom: 18px;
+    border: 1px solid #e0eaff;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #f8fbff, #eff6ff);
+}
+
+.help-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    border-radius: 9px;
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.help-card h3 {
+    margin: 0 0 6px;
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.help-card p {
+    margin: 0;
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.65;
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 8px 4px;
+    border-top: 1px solid #edf0f5;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dbeafe;
+    border-radius: 50%;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.profile-info {
+    min-width: 0;
+}
+
+.profile-info > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.online-dot {
+    width: 7px;
+    height: 7px;
+    display: inline-block;
+    margin-left: 5px;
+    border-radius: 50%;
+    background: #22c55e;
+}
+
+/* Sidebar scrolling and smaller screens */
+
+.sidebar {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #dbe3ee transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: #dbe3ee;
+    border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        padding: 18px 14px;
+    }
+
+    .brand {
+        margin-bottom: 24px;
+    }
+
+    .new-chat-btn {
+        margin-bottom: 22px;
+    }
+
+    .help-card {
+        padding: 12px;
+    }
+}
+
