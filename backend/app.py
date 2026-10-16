@@ -1,59 +1,87 @@
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+from dotenv import load_dotenv
+import mysql.connector
 import os
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# Frontend directory
 FRONTEND_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "frontend")
 )
 
 
-# Open the frontend homepage
+def get_db_connection():
+    return mysql.connector.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", "3306")),
+        user=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", ""),
+        database=os.getenv("DB_NAME", "ai_college_assistant"),
+        connection_timeout=5
+    )
+
+
 @app.route("/")
 def home():
     return send_from_directory(FRONTEND_DIR, "index.html")
 
 
-# Serve frontend CSS, JavaScript, and other static files
 @app.route("/<path:filename>")
 def frontend_files(filename):
     return send_from_directory(FRONTEND_DIR, filename)
 
 
-# Health check API
-@app.route("/api/health", methods=["GET"])
+@app.route("/api/health")
 def health():
+    database_status = "connected"
+
+    try:
+        connection = get_db_connection()
+        connection.close()
+    except mysql.connector.Error:
+        database_status = "disconnected"
+
     return jsonify({
         "success": True,
         "status": "healthy",
-        "message": "Python backend is working"
+        "database": database_status
     })
 
 
-# College information API
-@app.route("/api/college", methods=["GET"])
+@app.route("/api/college")
 def college_info():
-    return jsonify({
-        "success": True,
-        "college": {
-            "name": "AI College Assistant Demo College",
-            "location": "Nepal",
-            "services": [
-                "Course information",
-                "Admission information",
-                "Fee information",
-                "Exam information",
-                "Student support"
-            ]
-        }
-    })
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT id, name, address, phone, email, website
+            FROM colleges
+            ORDER BY id
+        """)
+
+        colleges = cursor.fetchall()
+        cursor.close()
+        connection.close()
+
+        return jsonify({
+            "success": True,
+            "colleges": colleges
+        })
+
+    except mysql.connector.Error:
+        app.logger.exception("Could not retrieve college information")
+        return jsonify({
+            "success": False,
+            "message": "Unable to retrieve college information."
+        }), 500
 
 
-# Chat API
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
@@ -67,46 +95,89 @@ def chat():
 
     question = message.lower()
 
-    if any(word in question for word in ["hello", "hi", "hey"]):
-        answer = (
-            "Hello! Welcome to AI College Assistant. "
-            "How can I help you today?"
-        )
-    elif any(word in question for word in ["admission", "enroll", "enrollment"]):
-        answer = (
-            "For admission information, contact your college administration "
-            "to learn about eligibility, documents, and application deadlines."
-        )
-    elif any(word in question for word in ["fee", "fees", "payment", "tuition"]):
-        answer = (
-            "Please contact your college administration for the current "
-            "fee structure and payment deadlines."
-        )
-    elif any(word in question for word in ["exam", "examination", "routine"]):
-        answer = (
-            "Check your college's official website or notice board for "
-            "examination routines and announcements."
-        )
-    elif any(word in question for word in ["course", "subject", "program", "syllabus"]):
-        answer = (
-            "Please tell me your course, semester, or subject so I can "
-            "provide more relevant guidance."
-        )
-    elif "scholarship" in question:
-        answer = (
-            "Contact your college administration to learn about scholarship "
-            "eligibility, available programs, and application deadlines."
-        )
-    else:
-        answer = (
-            "I can help with admissions, fees, courses, examinations, "
-            "scholarships, and student support. Please ask a specific question."
-        )
+    greetings = ["hello", "hi", "hey"]
+    if question in greetings or question in ["good morning", "good afternoon"]:
+        return jsonify({
+            "success": True,
+            "answer": "Hello! Welcome to CampusAI. How can I help you today?"
+        })
 
-    return jsonify({
-        "success": True,
-        "answer": answer
-    })
+    keywords = [
+        word.strip(".,?!:;()[]{}\"'")
+        for word in question.split()
+    ]
+
+    stop_words = {
+        "the", "is", "a", "an", "i", "you", "we", "do", "does",
+        "how", "what", "where", "when", "can", "could", "please",
+        "for", "to", "of", "in", "on", "my", "me", "and", "are",
+        "find", "tell", "about", "college", "your"
+    }
+
+    keywords = [
+        word for word in keywords
+        if len(word) > 2 and word not in stop_words
+    ]
+
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT question, answer, category
+            FROM faqs
+            ORDER BY id DESC
+        """)
+
+        faqs = cursor.fetchall()
+        cursor.close()
+        connection.close()
+
+        best_faq = None
+        best_score = 0
+
+        for faq in faqs:
+            faq_text = (
+                faq["question"] + " " +
+                faq["category"] + " " +
+                faq["answer"]
+            ).lower()
+
+            score = sum(
+                1 for word in keywords if word in faq_text
+            )
+
+            if score > best_score:
+                best_score = score
+                best_faq = faq
+
+        if best_faq and best_score > 0:
+            answer = best_faq["answer"]
+        else:
+            answer = (
+                "I couldn't find a matching answer in the college FAQ "
+                "database. Please try asking about admissions, fees, "
+                "examinations, or scholarships."
+            )
+
+        return jsonify({
+            "success": True,
+            "answer": answer,
+            "source": "college_faq_database" if best_faq and best_score > 0
+                      else "fallback"
+        })
+
+    except mysql.connector.Error:
+        app.logger.exception("Database error during chat")
+
+        return jsonify({
+            "success": False,
+            "answer": (
+                "I'm unable to access the college database right now. "
+                "Please check that MySQL is running and the database "
+                "configuration is correct."
+            )
+        }), 503
 
 
 if __name__ == "__main__":
